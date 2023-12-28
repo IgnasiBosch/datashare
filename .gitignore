@@ -117,3 +117,8 @@ fabric.properties
 # Ignore .idea folder
 .idea
 
+# Ignore datafiles folder
+datafiles/*
+
+# Ignore .env file
+.env
