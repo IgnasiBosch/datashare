@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-bullseye
+    container_name: datashare_db
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: datashare_db
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+        max_attempts: 3
+        window: 120s
+
+    ports:
+      - "127.0.0.1:${DB_PORT}:5432"
+
+    volumes:
+      - db:/var/lib/postgresql/data
+      - ./datafiles:/datafiles
+
+volumes:
+  db:
+    driver: local
