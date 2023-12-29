@@ -1,0 +1,31 @@
+{{define "base.html"}}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DataShare</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="/static/logo.png" type="image/png">
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Albert+Sans:wght@300;600&family=Inter:wght@400;600&display=swap');
+    </style>
+</head>
+<body>
+<header>
+    <div>
+        <img src="/static/logo.png" height="80"/>
+        <h1>DataShare</h1>
+    </div>
+    <svg id="svg" xmlns="http://www.w3.org/2000/svg" viewBox="-300 0 950 270">
+        <path d="M-314,267 C105,364 400,100 812,279" fill="none" stroke="#F6FAFFFF" stroke-width="120"
+              stroke-linecap="round"/>
+    </svg>
+
+</header>
+<main>
+    {{template "content" .}}
+</main>
+</body>
+</html>
+{{end}}

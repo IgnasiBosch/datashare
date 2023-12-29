@@ -1,0 +1,35 @@
+body {
+    background-color: #F6FAFFFF;
+    padding: 0;
+    margin: 0;
+}
+
+* {
+    font-family: 'Albert Sans', sans-serif;
+}
+
+header div {
+    display: flex;
+    align-items: center;
+    margin-left: 42px;
+    padding-top: 21px
+}
+
+header h1 {
+    padding-top: 20px;
+    color: white;
+    margin-top: 0;
+}
+
+header {
+    position: relative;
+    height: 230px;
+    background: #1a48ab;
+}
+
+header svg {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: auto;
+}
