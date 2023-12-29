@@ -3,6 +3,7 @@ module dataShare
 go 1.21
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.1
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.11.4
 	golang.org/x/crypto v0.17.0
