@@ -33,3 +33,61 @@ header svg {
     width: 100%;
     height: auto;
 }
+
+main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+#content {
+    padding: 10px;
+    text-align: left;
+    border-radius: 5px;
+    border-style: none;
+    width: 500px;
+    height: 50px;
+    resize: none;
+}
+
+.hidden {
+    display: none !important;
+}
+
+
+.button {
+    background-color: #1a48ab;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+}
+
+.smallButton {
+    background-color: #1a48ab;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 12px;
+    margin: 4px 2px;
+    cursor: pointer;
+}
+
+
+#fileList {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}

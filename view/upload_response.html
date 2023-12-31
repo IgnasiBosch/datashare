@@ -1,0 +1,14 @@
+{{define "content"}}
+<div style="display: flex;justify-content: center; align-items: center;">
+    <a id="link" href="{{ .link }}" target="_blank">{{ .link }}</a>
+    <button onclick="copyToClipboard('link')" class="smallButton" style="margin-left: 20px">Copy Link</button>
+</div>
+<div style="display: flex;justify-content: center; align-items: center;">
+    <code id="key">{{ .key }}</code>
+    <button onclick="copyToClipboard('key')" class="smallButton" style="margin-left: 20px">Copy Key</button>
+</div>
+
+<div style="margin-top: 40px">
+    <a href="/" class="button">Send another file</a>
+</div>
+{{end}}

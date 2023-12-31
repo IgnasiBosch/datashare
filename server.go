@@ -3,8 +3,8 @@ package main
 import (
 	"dataShare/db"
 	"dataShare/document"
+	"dataShare/service"
 	"errors"
-	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -34,44 +34,32 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 }
 
 func upload(c echo.Context) error {
-	// Read form fields
-	name := c.FormValue("name")
-	email := c.FormValue("email")
-
-	//------------
-	// Read files
-	//------------
-
-	// Multipart form
+	h := document.NewHandler(c, c.Get("db").(*gorm.DB), c.Get("encryption").(*service.Encryption))
 	form, err := c.MultipartForm()
 	if err != nil {
 		return err
 	}
-	files := form.File["files"]
 
-	for _, file := range files {
-		// Source
-		src, err := file.Open()
-		if err != nil {
-			return err
-		}
-		defer src.Close()
+	idKey, err := h.Encrypt(form)
 
-		// Destination
-		dst, err := os.Create(file.Filename)
-		if err != nil {
-			return err
-		}
-		defer dst.Close()
-
-		// Copy
-		if _, err = io.Copy(dst, src); err != nil {
-			return err
-		}
-
+	if err != nil {
+		return err
 	}
 
-	return c.HTML(http.StatusOK, fmt.Sprintf("<p>Uploaded successfully %d files with fields name=%s and email=%s.</p>", len(files), name, email))
+	return c.Render(http.StatusOK, "upload_response.html", map[string]interface{}{
+		"link": os.Getenv("BASE_URL") + "/" + idKey.ID,
+		"key":  idKey.Key,
+	})
+
+}
+
+func ContextEncryption(e *service.Encryption) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set("encryption", e)
+			return next(c)
+		}
+	}
 }
 
 func indexHandler(c echo.Context) error {
@@ -102,19 +90,44 @@ func main() {
 
 	templates := make(map[string]*template.Template)
 	templates["home.html"] = template.Must(template.ParseFiles("view/home.html", "view/base.html"))
+	templates["upload_response.html"] = template.Must(template.ParseFiles("view/upload_response.html", "view/base.html"))
 	e.Renderer = &Template{
 		templates: templates,
 	}
+	e.Use(db.ContextDB(dbConn))
+
+	iterations, err := strconv.Atoi(os.Getenv("ENCRYPTION_ITERATIONS"))
+	if err != nil {
+		log.Fatalf("Failed to convert ENCRYPTION_ITERATIONS to int")
+	}
+
+	bockSize, err := strconv.Atoi(os.Getenv("ENCRYPTION_BLOCK_SIZE_LENGTH"))
+	if err != nil {
+		log.Fatalf("Failed to convert ENCRYPTION_BLOCK_SIZE_LENGTH to int")
+	}
+
+	saltLength, err := strconv.Atoi(os.Getenv("ENCRYPTION_SALT_LENGTH"))
+	if err != nil {
+		log.Fatalf("Failed to convert ENCRYPTION_SALT_LENGTH to int")
+	}
+
+	e.Use(ContextEncryption(service.NewEncryption(
+		iterations,
+		bockSize,
+		saltLength,
+		os.Getenv("ENCRYPTION_HASH_SALT"),
+	)))
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
-		TokenLookup: "form:csrf",
+		TokenLookup: "form:_csrf",
 	}))
+	e.IPExtractor = echo.ExtractIPDirect()
 
 	e.Static("/static", "static")
 
 	e.GET("/", indexHandler)
-	e.POST("/upload", upload)
+	e.POST("/", upload)
 
 	e.Logger.Fatal(e.Start("localhost:" + appPort))
 }

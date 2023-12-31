@@ -1,5 +1,53 @@
 {{define "content"}}
-Boatswain Blog | {{ .name }}
-<br>
-{{ .csrf }}
+<form action="/" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <br>
+    <div id="mainContainer">
+        <div id="fileInputContainer" class="show">
+            <br>
+            <div style="display: flex;justify-content: center; align-items: center;">
+                <input type="file" id="real-file" name="files" hidden="hidden" multiple/>
+                <button type="button" id="browse" class="button">1. Select Files</button>
+            </div>
+            <ul id="fileList"></ul>
+        </div>
+    </div>
+    <br>
+    <br>
+    <div style="display: flex;justify-content: center; align-items: center;">
+        <input type="submit" value="2. Submit Files" id="submit" class="button hidden">
+    </div>
+    <br>
+    <br>
+    <br>
+    <p>After submitting the files, you will get a URL and a key used to decrypt and download the files back.
+        <br> The key is not stored on the server.
+    </p>
+</form>
+
+<script>
+    document.getElementById("browse").addEventListener("click", function () {
+        document.getElementById("real-file").click();
+    });
+
+
+    document.getElementById("real-file").addEventListener("change", function () {
+        let fileList = document.getElementById("fileList");
+        // clear the list
+        fileList.innerHTML = "";
+        // handle multiple files
+        let files = this.files;
+        if (files.length > 0) {
+            document.getElementById("browse").classList.add('hidden');
+            document.getElementById("submit").classList.remove('hidden');
+        }
+        for (let file of files) {
+            let fileSize = (file.size / 1024 / 1024).toFixed(2); // size in MB
+            let listItem = document.createElement("li");
+            listItem.textContent = file.name + " (" + fileSize + " MB)";
+            fileList.appendChild(listItem);
+        }
+    });
+
+</script>
 {{end}}
