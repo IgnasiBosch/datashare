@@ -31,6 +31,20 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return tmpl.ExecuteTemplate(w, "base.html", data)
 }
 
+// NewDocumentHandler is a helper function that handles the creation of the document handler with required dependencies.
+func NewDocumentHandler(c echo.Context) (*document.Handler, error) {
+	DB, ok := c.Get("db").(*gorm.DB)
+	if !ok {
+		return nil, errors.New("failed to get DB from context")
+	}
+	encryption, ok := c.Get("encryption").(*service.Encryption)
+	if !ok {
+		return nil, errors.New("failed to get encryption service from context")
+	}
+
+	return document.NewHandler(c, DB, encryption), nil
+}
+
 func indexHandler(c echo.Context) error {
 	return c.Render(http.StatusOK, "home.html", map[string]interface{}{
 		"csrf": c.Get("csrf"),
@@ -38,15 +52,24 @@ func indexHandler(c echo.Context) error {
 }
 
 func uploadDocument(c echo.Context) error {
-	h := document.NewHandler(c, c.Get("db").(*gorm.DB), c.Get("encryption").(*service.Encryption))
+	h, err := NewDocumentHandler(c)
+	if err != nil {
+		return c.Render(http.StatusInternalServerError, "error.html", map[string]interface{}{
+			"errorMsg": "Something went wrong",
+		})
+	}
 	form, err := c.MultipartForm()
 	if err != nil {
-		return err
+		return c.Render(http.StatusInternalServerError, "error.html", map[string]interface{}{
+			"errorMsg": "Something went wrong",
+		})
 	}
 
 	idKey, err := h.Encrypt(form)
 	if err != nil {
-		return err
+		return c.Render(http.StatusUnprocessableEntity, "error.html", map[string]interface{}{
+			"errorMsg": err.Error(),
+		})
 	}
 
 	return c.Render(http.StatusOK, "upload_response.html", map[string]interface{}{
@@ -56,11 +79,18 @@ func uploadDocument(c echo.Context) error {
 }
 
 func checkDocument(c echo.Context) error {
-	h := document.NewHandler(c, c.Get("db").(*gorm.DB), c.Get("encryption").(*service.Encryption))
-	ID := c.Param("id")
-	err := h.Check(ID)
+	h, err := NewDocumentHandler(c)
 	if err != nil {
-		return err
+		return c.Render(http.StatusInternalServerError, "error.html", map[string]interface{}{
+			"errorMsg": "Something went wrong",
+		})
+	}
+	ID := c.Param("id")
+	err = h.Check(ID)
+	if err != nil {
+		return c.Render(http.StatusUnprocessableEntity, "error.html", map[string]interface{}{
+			"errorMsg": err.Error(),
+		})
 	}
 
 	return c.Render(http.StatusOK, "get_document.html", map[string]interface{}{
@@ -70,12 +100,19 @@ func checkDocument(c echo.Context) error {
 }
 
 func downloadDocument(c echo.Context) error {
-	h := document.NewHandler(c, c.Get("db").(*gorm.DB), c.Get("encryption").(*service.Encryption))
+	h, err := NewDocumentHandler(c)
+	if err != nil {
+		return c.Render(http.StatusInternalServerError, "error.html", map[string]interface{}{
+			"errorMsg": "Something went wrong",
+		})
+	}
 	ID := c.Param("id")
 	key := c.FormValue("key")
 	content, d, err := h.Decrypt(core.NewIDKey(ID, key))
 	if err != nil {
-		return err
+		return c.Render(http.StatusUnprocessableEntity, "error.html", map[string]interface{}{
+			"errorMsg": err.Error(),
+		})
 	}
 
 	c.Response().Header().Set("Content-Disposition", "attachment; filename="+d.Filename)
@@ -101,19 +138,12 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 	appPort := os.Getenv("APP_PORT")
-
 	dbConn := getDatabaseConnection()
 	dbMigrate(dbConn)
 
 	e := echo.New()
 
-	templates := make(map[string]*template.Template)
-	templates["home.html"] = template.Must(template.ParseFiles("view/home.html", "view/base.html"))
-	templates["upload_response.html"] = template.Must(template.ParseFiles("view/upload_response.html", "view/base.html"))
-	templates["get_document.html"] = template.Must(template.ParseFiles("view/get_document.html", "view/base.html"))
-	e.Renderer = &Template{
-		templates: templates,
-	}
+	e.IPExtractor = echo.ExtractIPDirect()
 	e.Use(db.ContextDB(dbConn))
 	e.Use(ContextEncryption(getEncryption()))
 	e.Use(middleware.Logger())
@@ -121,7 +151,15 @@ func main() {
 	e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
 		TokenLookup: "form:_csrf",
 	}))
-	e.IPExtractor = echo.ExtractIPDirect()
+
+	templates := make(map[string]*template.Template)
+	templates["home.html"] = template.Must(template.ParseFiles("view/home.html", "view/base.html"))
+	templates["upload_response.html"] = template.Must(template.ParseFiles("view/upload_response.html", "view/base.html"))
+	templates["get_document.html"] = template.Must(template.ParseFiles("view/get_document.html", "view/base.html"))
+	templates["error.html"] = template.Must(template.ParseFiles("view/error.html", "view/base.html"))
+	e.Renderer = &Template{
+		templates: templates,
+	}
 
 	e.Static("/static", "static")
 

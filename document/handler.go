@@ -191,7 +191,7 @@ func (h *Handler) Decrypt(ip *core.IDKey) ([]byte, *Document, error) {
 			return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2070, "Can't update file")
 		}
 
-		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2080, "Can't decrypt file")
+		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2080, "Wrong key, try again")
 	}
 
 	if err != nil {
