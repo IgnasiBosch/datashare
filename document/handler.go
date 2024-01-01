@@ -219,14 +219,6 @@ func (h *Handler) Decrypt(ip *core.IDKey) ([]byte, *Document, error) {
 		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2080, "Can't remove file")
 	}
 
-	//h.c.Response().WriteHeader("Content-Disposition", "attachment; filename="+d.Filename)
-	//h.c.Response().WriteHeader("Content-Type", d.FileContentType)
-	//h.c.Response().WriteHeader("Accept-Length", fmt.Sprintf("%d", d.FileSize))
-	//_, err = h.c.Writer.Write(documentContent)
-	//if err != nil {
-	//	return core.NewError(http.StatusUnprocessableEntity, 2080, "Can't remove file")
-	//}
-
 	return documentContent, d, nil
 
 }

@@ -120,6 +120,7 @@ func downloadDocument(c echo.Context) error {
 	}
 
 	c.Response().Header().Set("Content-Disposition", "attachment; filename="+d.Filename)
+	c.Response().Header().Set("Accept-Length", fmt.Sprintf("%d", d.FileSize))
 	return c.Blob(http.StatusOK, d.FileContentType, content)
 }
 
