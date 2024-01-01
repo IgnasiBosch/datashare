@@ -1,0 +1,15 @@
+{{define "content"}}
+<form action="/{{ .id }}" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <br>
+    <br>
+    <input type="text" id="key" name="key" class="field" placeholder="Your key here...">
+    <br>
+    <br>
+
+    <input type="submit" value="Submit" id="submit" class="button">
+</form>
+<script>
+    document.getElementById("key").focus();
+</script>
+{{end}}

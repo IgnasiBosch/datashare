@@ -5,6 +5,7 @@ import (
 	"dataShare/service"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -114,7 +115,7 @@ func (h *Handler) Encrypt(form *multipart.Form) (*core.IDKey, error) {
 	}, nil
 }
 
-func (h *Handler) Check(ID string) *core.Error {
+func (h *Handler) Check(ID string) error {
 	dr := NewRepositoryImp(h.DB)
 	d, err := dr.FindById(ID)
 	if err != nil {
@@ -136,96 +137,96 @@ func (h *Handler) Check(ID string) *core.Error {
 	return nil
 }
 
-//
-//func (h *Handler) Decrypt(ip *core.IDKey) *core.Error {
-//	dr := NewRepositoryImp(h.DB)
-//	d, err := dr.FindById(ip.ID)
-//	if err != nil {
-//		return core.NewError(http.StatusUnprocessableEntity, 2000, "Can't find document")
-//	}
-//
-//	if d.Status == Downloaded {
-//		return core.NewError(http.StatusUnprocessableEntity, 2010, "Document was already downloaded")
-//	}
-//
-//	if d.Status == Expired {
-//		return core.NewError(http.StatusUnprocessableEntity, 2020, "Document was expired")
-//	}
-//
-//	if d.Status == MaxFailedAttempts {
-//		return core.NewError(http.StatusUnprocessableEntity, 2030, "Document reached max failed attempts")
-//	}
-//
-//	targetPath := dataFolder + ip.ID
-//	src, err := os.Open(targetPath)
-//	if err != nil {
-//		return core.NewError(http.StatusUnprocessableEntity, 2040, "Can't open file")
-//	}
-//	ciphertext, err := io.ReadAll(src)
-//	if err != nil {
-//		return core.NewError(http.StatusUnprocessableEntity, 2050, "Can't read file")
-//	}
-//	now := time.Now()
-//	documentContent, err := h.e.Decrypt(ip.Key, ciphertext)
-//	if err != nil {
-//
-//		d.FailedAttempts++
-//		d.UpdatedAt = &now
-//		if d.FailedAttempts >= 3 {
-//			d.Status = MaxFailedAttempts
-//			err = os.Remove(targetPath)
-//			if err != nil {
-//				return core.NewError(http.StatusUnprocessableEntity, 2060, "Can't remove file")
-//			}
-//		}
-//
-//		err = h.DB.Transaction(func(tx *gorm.DB) error {
-//			dr := NewRepositoryImp(tx)
-//			err := dr.Update(d)
-//			if err != nil {
-//				return err
-//			}
-//			return nil
-//		})
-//		if err != nil {
-//			return core.NewError(http.StatusUnprocessableEntity, 2070, "Can't update file")
-//		}
-//
-//		return core.NewError(http.StatusUnprocessableEntity, 2080, "Can't decrypt file")
-//	}
-//
-//	if err != nil {
-//		return core.NewError(http.StatusUnprocessableEntity, 2070, "Can't update file")
-//	}
-//
-//	err = h.DB.Transaction(func(tx *gorm.DB) error {
-//		now := time.Now()
-//		dr := NewRepositoryImp(tx)
-//		d.Status = Downloaded
-//		d.DownloadedAt = &now
-//		d.UpdatedAt = &now
-//		err := dr.Update(d)
-//		if err != nil {
-//			return err
-//		}
-//		err = os.Remove(targetPath)
-//		if err != nil {
-//			return err
-//		}
-//
-//		return nil
-//	})
-//	if err != nil {
-//		return core.NewError(http.StatusUnprocessableEntity, 2080, "Can't remove file")
-//	}
-//
-//	//h.c.Response().WriteHeader("Content-Disposition", "attachment; filename="+d.Filename)
-//	//h.c.Response().WriteHeader("Content-Type", d.FileContentType)
-//	//h.c.Response().WriteHeader("Accept-Length", fmt.Sprintf("%d", d.FileSize))
-//	//_, err = h.c.Writer.Write(documentContent)
-//	//if err != nil {
-//	//	return core.NewError(http.StatusUnprocessableEntity, 2080, "Can't remove file")
-//	//}
-//
-//	return nil
-//}
+func (h *Handler) Decrypt(ip *core.IDKey) ([]byte, *Document, error) {
+	dr := NewRepositoryImp(h.DB)
+	d, err := dr.FindById(ip.ID)
+	if err != nil {
+		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2000, "Can't find document")
+	}
+
+	if d.Status == Downloaded {
+		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2010, "Document was already downloaded")
+	}
+
+	if d.Status == Expired {
+		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2020, "Document was expired")
+	}
+
+	if d.Status == MaxFailedAttempts {
+		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2030, "Document reached max failed attempts")
+	}
+
+	targetPath := dataFolder + ip.ID
+	src, err := os.Open(targetPath)
+	if err != nil {
+		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2040, "Can't open file")
+	}
+	ciphertext, err := io.ReadAll(src)
+	if err != nil {
+		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2050, "Can't read file")
+	}
+	now := time.Now()
+	documentContent, err := h.e.Decrypt(ip.Key, ciphertext)
+	if err != nil {
+
+		d.FailedAttempts++
+		d.UpdatedAt = &now
+		if d.FailedAttempts >= 3 {
+			d.Status = MaxFailedAttempts
+			err = os.Remove(targetPath)
+			if err != nil {
+				return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2060, "Can't remove file")
+			}
+		}
+
+		err = h.DB.Transaction(func(tx *gorm.DB) error {
+			dr := NewRepositoryImp(tx)
+			err := dr.Update(d)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2070, "Can't update file")
+		}
+
+		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2080, "Can't decrypt file")
+	}
+
+	if err != nil {
+		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2070, "Can't update file")
+	}
+
+	err = h.DB.Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		dr := NewRepositoryImp(tx)
+		d.Status = Downloaded
+		d.DownloadedAt = &now
+		d.UpdatedAt = &now
+		err := dr.Update(d)
+		if err != nil {
+			return err
+		}
+		err = os.Remove(targetPath)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, nil, core.NewError(http.StatusUnprocessableEntity, 2080, "Can't remove file")
+	}
+
+	//h.c.Response().WriteHeader("Content-Disposition", "attachment; filename="+d.Filename)
+	//h.c.Response().WriteHeader("Content-Type", d.FileContentType)
+	//h.c.Response().WriteHeader("Accept-Length", fmt.Sprintf("%d", d.FileSize))
+	//_, err = h.c.Writer.Write(documentContent)
+	//if err != nil {
+	//	return core.NewError(http.StatusUnprocessableEntity, 2080, "Can't remove file")
+	//}
+
+	return documentContent, d, nil
+
+}

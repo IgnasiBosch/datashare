@@ -1,6 +1,7 @@
 package main
 
 import (
+	"dataShare/core"
 	"dataShare/db"
 	"dataShare/document"
 	"dataShare/service"
@@ -18,13 +19,10 @@ import (
 )
 
 type Template struct {
-	//templates *template.Template
 	templates map[string]*template.Template
 }
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	//return t.templates.ExecuteTemplate(w, name, data)
-
 	tmpl, ok := t.templates[name]
 	if !ok {
 		err := errors.New("Template not found -> " + name)
@@ -33,7 +31,13 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return tmpl.ExecuteTemplate(w, "base.html", data)
 }
 
-func upload(c echo.Context) error {
+func indexHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "home.html", map[string]interface{}{
+		"csrf": c.Get("csrf"),
+	})
+}
+
+func uploadDocument(c echo.Context) error {
 	h := document.NewHandler(c, c.Get("db").(*gorm.DB), c.Get("encryption").(*service.Encryption))
 	form, err := c.MultipartForm()
 	if err != nil {
@@ -51,6 +55,33 @@ func upload(c echo.Context) error {
 	})
 }
 
+func checkDocument(c echo.Context) error {
+	h := document.NewHandler(c, c.Get("db").(*gorm.DB), c.Get("encryption").(*service.Encryption))
+	ID := c.Param("id")
+	err := h.Check(ID)
+	if err != nil {
+		return err
+	}
+
+	return c.Render(http.StatusOK, "get_document.html", map[string]interface{}{
+		"csrf": c.Get("csrf"),
+		"id":   ID,
+	})
+}
+
+func downloadDocument(c echo.Context) error {
+	h := document.NewHandler(c, c.Get("db").(*gorm.DB), c.Get("encryption").(*service.Encryption))
+	ID := c.Param("id")
+	key := c.FormValue("key")
+	content, d, err := h.Decrypt(core.NewIDKey(ID, key))
+	if err != nil {
+		return err
+	}
+
+	c.Response().Header().Set("Content-Disposition", "attachment; filename="+d.Filename)
+	return c.Blob(http.StatusOK, d.FileContentType, content)
+}
+
 func ContextEncryption(e *service.Encryption) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -58,16 +89,6 @@ func ContextEncryption(e *service.Encryption) echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
-}
-
-func indexHandler(c echo.Context) error {
-
-	return c.Render(http.StatusOK, "home.html", map[string]interface{}{
-		"name": "About",
-		"msg":  "All about Boatswain!",
-		"csrf": c.Get("csrf"),
-	})
-
 }
 
 // main is the entry point of the application.
@@ -89,6 +110,7 @@ func main() {
 	templates := make(map[string]*template.Template)
 	templates["home.html"] = template.Must(template.ParseFiles("view/home.html", "view/base.html"))
 	templates["upload_response.html"] = template.Must(template.ParseFiles("view/upload_response.html", "view/base.html"))
+	templates["get_document.html"] = template.Must(template.ParseFiles("view/get_document.html", "view/base.html"))
 	e.Renderer = &Template{
 		templates: templates,
 	}
@@ -104,7 +126,9 @@ func main() {
 	e.Static("/static", "static")
 
 	e.GET("/", indexHandler)
-	e.POST("/", upload)
+	e.POST("/", uploadDocument)
+	e.GET("/:id", checkDocument)
+	e.POST("/:id", downloadDocument)
 
 	e.Logger.Fatal(e.Start("localhost:" + appPort))
 }
