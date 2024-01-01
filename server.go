@@ -6,6 +6,7 @@ import (
 	"dataShare/document"
 	"dataShare/service"
 	"errors"
+	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -15,7 +16,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
+	"time"
 )
 
 type Template struct {
@@ -128,6 +132,21 @@ func ContextEncryption(e *service.Encryption) echo.MiddlewareFunc {
 	}
 }
 
+func initCleaningTask(stopChan chan os.Signal, db *gorm.DB) {
+	ticker := time.NewTicker(1 * time.Minute)
+	for {
+		select {
+		case <-stopChan:
+			ticker.Stop()
+			fmt.Println("Cleaning task stopped.")
+			return
+		case t := <-ticker.C:
+			fmt.Println("Cleaning task triggered at: ", t)
+			document.CleanUp(db)
+		}
+	}
+}
+
 // main is the entry point of the application.
 // It initializes the environment variables, establishes a database connection, performs database migration,
 // creates a new Echo instance, defines a route to handle the root path, and starts the server.
@@ -140,6 +159,17 @@ func main() {
 	appPort := os.Getenv("APP_PORT")
 	dbConn := getDatabaseConnection()
 	dbMigrate(dbConn)
+
+	// interrupt signal handling
+	stopChan := make(chan os.Signal)
+	signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM)
+	go initCleaningTask(stopChan, dbConn)
+	go func() {
+		<-stopChan
+		// Print a message and exit the application
+		fmt.Println("Caught stop signal. Cleaning up and terminating the application...")
+		os.Exit(0)
+	}()
 
 	e := echo.New()
 
