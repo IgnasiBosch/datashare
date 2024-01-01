@@ -1,4 +1,22 @@
 {{define "content"}}
+<script>
+
+        function copyToClipboard(elementId) {
+            if (!navigator.clipboard) {
+                var copyText = document.getElementById(elementId);
+                var textArea = document.createElement("textarea");
+                textArea.value = copyText.textContent;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand("Copy");
+                textArea.remove();
+            }
+            else {
+                navigator.clipboard.writeText(document.getElementById(elementId).textContent);
+            }
+        }
+
+</script>
 <div style="display: flex;justify-content: center; align-items: center;">
     <a id="link" href="{{ .link }}" target="_blank">{{ .link }}</a>
     <button onclick="copyToClipboard('link')" class="smallButton" style="margin-left: 20px">Copy Link</button>

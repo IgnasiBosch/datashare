@@ -41,7 +41,6 @@ func upload(c echo.Context) error {
 	}
 
 	idKey, err := h.Encrypt(form)
-
 	if err != nil {
 		return err
 	}
@@ -50,7 +49,6 @@ func upload(c echo.Context) error {
 		"link": os.Getenv("BASE_URL") + "/" + idKey.ID,
 		"key":  idKey.Key,
 	})
-
 }
 
 func ContextEncryption(e *service.Encryption) echo.MiddlewareFunc {
@@ -95,28 +93,7 @@ func main() {
 		templates: templates,
 	}
 	e.Use(db.ContextDB(dbConn))
-
-	iterations, err := strconv.Atoi(os.Getenv("ENCRYPTION_ITERATIONS"))
-	if err != nil {
-		log.Fatalf("Failed to convert ENCRYPTION_ITERATIONS to int")
-	}
-
-	bockSize, err := strconv.Atoi(os.Getenv("ENCRYPTION_BLOCK_SIZE_LENGTH"))
-	if err != nil {
-		log.Fatalf("Failed to convert ENCRYPTION_BLOCK_SIZE_LENGTH to int")
-	}
-
-	saltLength, err := strconv.Atoi(os.Getenv("ENCRYPTION_SALT_LENGTH"))
-	if err != nil {
-		log.Fatalf("Failed to convert ENCRYPTION_SALT_LENGTH to int")
-	}
-
-	e.Use(ContextEncryption(service.NewEncryption(
-		iterations,
-		bockSize,
-		saltLength,
-		os.Getenv("ENCRYPTION_HASH_SALT"),
-	)))
+	e.Use(ContextEncryption(getEncryption()))
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
@@ -148,6 +125,30 @@ func getDatabaseConnection() *gorm.DB {
 		log.Fatalf("Failed to connect to database")
 	}
 	return dbConn
+}
+
+func getEncryption() *service.Encryption {
+	iterations, err := strconv.Atoi(os.Getenv("ENCRYPTION_ITERATIONS"))
+	if err != nil {
+		log.Fatalf("Failed to convert ENCRYPTION_ITERATIONS to int")
+	}
+
+	bockSize, err := strconv.Atoi(os.Getenv("ENCRYPTION_BLOCK_SIZE_LENGTH"))
+	if err != nil {
+		log.Fatalf("Failed to convert ENCRYPTION_BLOCK_SIZE_LENGTH to int")
+	}
+
+	saltLength, err := strconv.Atoi(os.Getenv("ENCRYPTION_SALT_LENGTH"))
+	if err != nil {
+		log.Fatalf("Failed to convert ENCRYPTION_SALT_LENGTH to int")
+	}
+
+	return service.NewEncryption(
+		iterations,
+		bockSize,
+		saltLength,
+		os.Getenv("ENCRYPTION_HASH_SALT"),
+	)
 }
 
 func dbMigrate(db *gorm.DB) {
